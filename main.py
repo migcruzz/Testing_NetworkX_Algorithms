@@ -66,6 +66,8 @@ testerIda = IDAStarVsAStarComparison(graph, SOURCE, TARGET)
 testerIda.run_all()
 
 """
+from Algorithms.bi_astar import bidirectional_astar
+from Graphs.graphs import draw_graph
 
 """
 # !/usr/bin/env python3
@@ -153,8 +155,9 @@ if __name__ == "__main__":
 Run every comparison in a separate process, but all of them receive the
 *same* base graph so the test is fair.
 """
+# !/usr/bin/env python3
 import re
-from multiprocessing import Process, freeze_support, Manager
+from multiprocessing import Process, Manager, freeze_support
 from pathlib import Path
 
 import networkx as nx
@@ -166,229 +169,172 @@ from Algorithms.ida_star import idastar_path
 from Algorithms.rtaa_star import rtaa_star_path
 from Algorithms.sma_star import sma_star_path
 from CsvProcessor.generator import generate_graph_from_csv
-from Graphs.graphs import draw_graph
 from Testers.bi_astar import AStarVsBidirectionalComparison
 from Testers.d_star_lite import DStarLiteVsAStarComparison
 from Testers.ida_star import IDAStarVsAStarComparison
 from Testers.rtaa_star import RTAAStarVsAStarComparison
 from Testers.sma_star import SMAStarVsAStarComparison
 
-# ─── Configuration ─────────────────────────────────────────────────────────────
+# ─── Global settings ──────────────────────────────────────────────────────────
 DIRECTED = False
 SOURCE = "Luxembourg"
 TARGET = "Barcelona"
-MAX_NODES_IN_MEMORY = 40
-# Configuração
-N_NODES = 1000
-N_EDGES = 3000
-N_MODIFICATIONS = 10
-# N_MODIFICATIONS = round(N_EDGES * 0.5)
+CSV_PATH = "Csv/cities_nodes_special.csv"
 
+N_MODIFICATIONS = 100  # average edge-weight updates per algorithm
 LOOKAHEAD = 25
 MOVELIMIT = 3
-
-MIN_WEIGHT = 1
-MAX_WEIGHT = 300
-
-
-
-# ─── Worker wrappers ───────────────────────────────────────────────────────────
-def run_bidirectional(G: nx.Graph):
-    tester = AStarVsBidirectionalComparison(G, SOURCE, TARGET)
-    print("\n--- Bidirectional A* vs A* ---")
-    tester.run_all()
-
-    try:
-        path = nx.bidirectional_shortest_path(G, SOURCE, TARGET)
-        draw_graph(G, source=SOURCE, target=TARGET, path=path, output_path="Graphs/path_bidirectional_astar.png")
-    except nx.NetworkXNoPath:
-        print("No path found for Bidirectional A*")
+MEMORY_LIMIT = 1  # nodes kept in memory for SMA*
+MAX_NODES_IN_MEMORY=1
+EXCEL_FILE = "metrics.xlsx"
 
 
-def run_dstar(DG: nx.DiGraph):
-    tester = DStarLiteVsAStarComparison(DG, SOURCE, TARGET)
-    print("\n--- D* Lite vs A* ---")
-    tester.run_all()
-
-    # Se tiveres função para recuperar o caminho, substitui esta parte:
-    try:
-        path = nx.astar_path(DG, SOURCE, TARGET, weight="weight")  # Placeholder
-        draw_graph(DG, source=SOURCE, target=TARGET, path=path, output_path="Graphs/path_dstar_lite.png")
-    except nx.NetworkXNoPath:
-        print("No path found for D* Lite")
+# ─── Excel helpers ────────────────────────────────────────────────────────────
+def sanitize_sheet_name(name: str) -> str:
+    return re.sub(r'[:\\/?*\[\]]', "", name)[:31]
 
 
-def run_idastar(G: nx.Graph):
-    tester = IDAStarVsAStarComparison(G, SOURCE, TARGET)
-    print("\n--- IDA* vs A* ---")
-    tester.run_all()
-
-    try:
-        path = idastar_path(G, SOURCE, TARGET)
-        draw_graph(G, source=SOURCE, target=TARGET, path=path, output_path="Graphs/path_idastar.png")
-    except Exception as e:
-        print(f"IDA* path error: {e}")
-
-
-def run_rtaa(G: nx.Graph):
-    tester = RTAAStarVsAStarComparison(G, SOURCE, TARGET, lookahead=100, move_limit=1)
-    print("\n--- RTAA* vs A* ---")
-    tester.run_all()
-
-    try:
-        path = rtaa_star_path(G, SOURCE, TARGET, lookahead=100, move_limit=1)
-        draw_graph(G, source=SOURCE, target=TARGET, path=path, output_path="Graphs/path_rtaa_star.png")
-    except Exception as e:
-        print(f"RTAA* path error: {e}")
-
-
-def run_sma(G: nx.Graph, memory_limit: int):
-    tester = SMAStarVsAStarComparison(G, SOURCE, TARGET, memory_limit=memory_limit)
-    print(f"\n--- SMA* vs A* (Memory limit: {memory_limit}) ---")
-    tester.run_all()
-
-    try:
-        path = sma_star_path(G, SOURCE, TARGET, memory_limit=memory_limit)
-        draw_graph(G, source=SOURCE, target=TARGET, path=path, output_path="Graphs/path_sma_star.png")
-    except Exception as e:
-        print(f"SMA* path error: {e}")
-
-
-def sanitize_sheet_name(name):
-    return re.sub(r'[:\\/?*\[\]]', '', name)[:31]
-
-
-def append_sheet(result_dict, sheet_name, caminho_excel="metrics.xlsx"):
-    df = pd.DataFrame(result_dict.items(), columns=["Métrica", "Valor"])
+def append_sheet(result_dict, sheet_name, excel_path=EXCEL_FILE):
+    df = pd.DataFrame(result_dict.items(), columns=["Metric", "Value"])
     sheet_name = sanitize_sheet_name(sheet_name)
-
-    if Path(caminho_excel).exists():
-        mode = "a"
-        if_sheet_exists = "replace"
-    else:
-        mode = "w"
-        if_sheet_exists = None
+    mode = "a" if Path(excel_path).exists() else "w"
 
     with pd.ExcelWriter(
-            caminho_excel,
+            excel_path,
             engine="openpyxl",
             mode=mode,
-            if_sheet_exists=if_sheet_exists,
+            if_sheet_exists=None if mode == "w" else "replace",
     ) as writer:
         df.to_excel(writer, index=False, sheet_name=sheet_name)
+        ws = writer.sheets[sheet_name]
 
-        worksheet = writer.sheets[sheet_name]
+        bold = Font(bold=True)
+        centre = Alignment(horizontal="center")
 
-        header_font = Font(bold=True)
-        center_align = Alignment(horizontal="center")
+        # header
+        for cell in ws[1]:
+            cell.font = bold
+            cell.alignment = centre
 
-        for col_idx, column_cells in enumerate(worksheet.iter_cols(min_row=1, max_row=1), start=1):
-            for cell in column_cells:
-                cell.font = header_font
-                cell.alignment = center_align
-
-        for col_idx, column_cells in enumerate(worksheet.iter_cols(min_row=1, max_row=worksheet.max_row), start=1):
-            max_length = max(len(str(cell.value)) if cell.value is not None else 0 for cell in column_cells)
-            adjusted_width = max_length + 2
-            col_letter = get_column_letter(col_idx)
-            worksheet.column_dimensions[col_letter].width = adjusted_width
-
-        for row in worksheet.iter_rows(min_row=2, max_row=worksheet.max_row):
+        # values
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
             for cell in row:
-                cell.alignment = center_align
+                cell.alignment = centre
+
+        # autosize columns
+        for col_idx in range(1, ws.max_column + 1):
+            col_letter = get_column_letter(col_idx)
+            max_len = max(
+                len(str(c.value)) if c.value is not None else 0
+                for c in ws[col_letter]
+            )
+            ws.column_dimensions[col_letter].width = max_len + 2
 
 
-def run_tester(tester_class, graph, alg_name, shared_results, *args):
-    tester = tester_class(graph, SOURCE, TARGET, *args)
-    print(f"\n--- {alg_name} ---")
-    result = tester.run_all()
-    shared_results[alg_name] = result
+# ─── Worker wrappers ──────────────────────────────────────────────────────────
+def run_bidirectional(graph, n_mods, shared):
+    tester = AStarVsBidirectionalComparison(graph, SOURCE, TARGET, n_mods)
+    shared["Bidirectional A*"] = tester.run_all()
+
+    try:
+        _, full_path, _ = bidirectional_astar(graph, SOURCE, TARGET)
+        draw_graph(
+            graph,
+            SOURCE,
+            TARGET,
+            full_path,
+            "Graphs/Plots/path_bidirectional_astar.png",
+        )
+    except nx.NetworkXNoPath:
+        pass
 
 
-# ─── Main ──────────────────────────────────────────────────────────────────────
+def run_dstar(di_graph, n_mods, shared):
+    tester = DStarLiteVsAStarComparison(di_graph, SOURCE, TARGET, n_mods)
+    shared["D* Lite"] = tester.run_all()
+    try:
+        path = nx.astar_path(di_graph, SOURCE, TARGET, weight="weight")
+        draw_graph(di_graph, SOURCE, TARGET, path, "Graphs/Plots/path_dstar_lite.png")
+    except nx.NetworkXNoPath:
+        pass
+
+
+def run_idastar(graph, n_mods, shared):
+    tester = IDAStarVsAStarComparison(graph, SOURCE, TARGET, n_mods)
+    shared["IDA*"] = tester.run_all()
+    try:
+        path = idastar_path(graph, SOURCE, TARGET)
+        draw_graph(graph, SOURCE, TARGET, path, "Graphs/Plots/path_idastar.png")
+    except Exception:
+        pass
+
+
+def run_rtaa(graph, lookahead, move_limit, n_mods, shared):
+    tester = RTAAStarVsAStarComparison(graph, SOURCE, TARGET, lookahead, move_limit, n_mods)
+    key = f"RTAA* (L={lookahead}, M={move_limit})"
+    shared[key] = tester.run_all()
+    try:
+        path = rtaa_star_path(graph, SOURCE, TARGET, lookahead=lookahead, move_limit=move_limit)
+        draw_graph(graph, SOURCE, TARGET, path, "Graphs/Plots/path_rtaa_star.png")
+    except Exception:
+        pass
+
+
+def run_sma(graph, memory_limit, n_mods, shared):
+    tester = SMAStarVsAStarComparison(
+        graph, SOURCE, TARGET, heuristic=None, n_modifications=n_mods, memory_limit=memory_limit
+    )
+    shared["SMA*"] = tester.run_all()
+    try:
+        path = sma_star_path(graph, SOURCE, TARGET, memory_limit=memory_limit)
+        draw_graph(graph, SOURCE, TARGET, path, "Graphs/Plots/path_sma_star.png")
+    except Exception:
+        pass
+
+
+def launch(worker, *args):
+    worker(*args)
+
+
+# ─── Main ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     freeze_support()
 
-    base_graph = generate_graph_from_csv("Csv/cities_nodes_special.csv", weight_field="distance_km", directed=DIRECTED)
-    directed_graph = base_graph.to_directed()
+    base_graph = generate_graph_from_csv(CSV_PATH, "distance_km", DIRECTED)
     if not nx.has_path(base_graph, SOURCE, TARGET):
-        print(f"No path found between {SOURCE} and {TARGET}. Aborting.")
-    else:
-        print(f"Path found between {SOURCE} and {TARGET}.")
+        print("No path between source and target. Aborting.")
+        exit(1)
 
-        # Guardar visualização do grafo com o caminho
-        path = nx.shortest_path(base_graph, source=SOURCE, target=TARGET, weight="weight")
-        output_path = f"Graphs/graph_{SOURCE}_to_{TARGET}.png"
-        draw_graph(base_graph, source=SOURCE, target=TARGET, path=path, output_path=output_path)
-        print(f"Grafo guardado como imagem em: {output_path}")
+    initial_path = nx.shortest_path(base_graph, SOURCE, TARGET, weight="weight")
+    draw_graph(base_graph, SOURCE, TARGET, initial_path,
+               f"Graphs/Plots/graph_{SOURCE}_to_{TARGET}.png")
 
-        manager = Manager()
-        shared_results = manager.dict()
+    directed_graph = base_graph.to_directed()
 
-        # Iniciar testes
-        print("Running tests...")
+    manager = Manager()
+    shared_results = manager.dict()
 
-        processes = [
-            Process(
-                target=run_tester,
-                args=(
-                    AStarVsBidirectionalComparison,
-                    base_graph,
-                    "Bidirectional A*",
-                    shared_results,
-                    N_MODIFICATIONS,
-                ),
-            ),
-
-            Process(
-                target=run_tester,
-                args=(
-                    DStarLiteVsAStarComparison,
-                    directed_graph,
-                    "D* Lite",
-                    shared_results,
-                    N_MODIFICATIONS,
-                ),
-            ),
-
-            Process(
-                target=run_tester,
-                args=(
-                    IDAStarVsAStarComparison,
-                    base_graph,
-                    "IDA*",
-                    shared_results,
-                    N_MODIFICATIONS,
-                ),
-            ),
-
-            Process(
-                target=run_tester,
-                args=(
-                    RTAAStarVsAStarComparison,
-                    base_graph,
-                    f"RTAA* (lookahead={LOOKAHEAD}, move_limit={MOVELIMIT})",
-                    shared_results,
-                    LOOKAHEAD,
-                    MOVELIMIT,
-                    N_MODIFICATIONS,
-                ),
-            ),
-
-            Process(
-                target=run_tester,
-                args=(
-                    SMAStarVsAStarComparison,
-                    base_graph,
-                    "SMA*",
-                    shared_results,
-                    None,
-                    N_MODIFICATIONS,
-                ),
-            ),
-        ]
+    processes = [
+        Process(target=launch, args=(run_bidirectional,
+                                     base_graph, N_MODIFICATIONS, shared_results)),
+        Process(target=launch, args=(run_dstar,
+                                     directed_graph, N_MODIFICATIONS, shared_results)),
+        Process(target=launch, args=(run_idastar,
+                                     base_graph, N_MODIFICATIONS, shared_results)),
+        Process(target=launch, args=(run_rtaa,
+                                     base_graph, LOOKAHEAD, MOVELIMIT,
+                                     N_MODIFICATIONS, shared_results)),
+        Process(target=launch, args=(run_sma,
+                                     base_graph, MEMORY_LIMIT,
+                                     N_MODIFICATIONS, shared_results)),
+    ]
 
     for p in processes:
         p.start()
     for p in processes:
         p.join()
+
+    for algorithm, metrics in shared_results.items():
+        append_sheet(metrics, algorithm, EXCEL_FILE)
+
+    print(f"All metrics written to {EXCEL_FILE}")
