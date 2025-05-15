@@ -175,11 +175,8 @@ from Testers.ida_star import IDAStarVsAStarComparison
 from Testers.rtaa_star import RTAAStarVsAStarComparison
 from Testers.sma_star import SMAStarVsAStarComparison
 
-from Config import MEMORY_LIMIT, LOOKAHEAD, MOVELIMIT, N_MODIFICATIONS, SOURCE, TARGET, CSV_PATH, EXCEL_FILE
+from Config import MEMORY_LIMIT, LOOKAHEAD, MOVELIMIT, N_MODIFICATIONS, SOURCE, TARGET, CSV_PATH, EXCEL_FILE,DIRECTED
 
-
-# ─── Global settings ──────────────────────────────────────────────────────────
-DIRECTED = False
 
 
 # ─── Excel helpers ────────────────────────────────────────────────────────────
