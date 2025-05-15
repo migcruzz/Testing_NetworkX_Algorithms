@@ -153,24 +153,20 @@ if __name__ == "__main__":
 Run every comparison in a separate process, but all of them receive the
 *same* base graph so the test is fair.
 """
-from multiprocessing import Process, freeze_support
-import networkx as nx
-
-from Algorithms.ida_star import idastar_path
-from Algorithms.rtaa_star import rtaa_star_path
-from Algorithms.sma_star import sma_star_path
-from Graphs.graphs import draw_graph
-from CsvProcessor.generator import generate_graph_from_csv
-
 import re
 from multiprocessing import Process, freeze_support, Manager
 from pathlib import Path
 
+import networkx as nx
 import pandas as pd
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
 
-
+from Algorithms.ida_star import idastar_path
+from Algorithms.rtaa_star import rtaa_star_path
+from Algorithms.sma_star import sma_star_path
+from CsvProcessor.generator import generate_graph_from_csv
+from Graphs.graphs import draw_graph
 from Testers.bi_astar import AStarVsBidirectionalComparison
 from Testers.d_star_lite import DStarLiteVsAStarComparison
 from Testers.ida_star import IDAStarVsAStarComparison
@@ -191,11 +187,11 @@ N_MODIFICATIONS = 10
 LOOKAHEAD = 25
 MOVELIMIT = 3
 
-DIRECTED = False
 MIN_WEIGHT = 1
 MAX_WEIGHT = 300
-SOURCE = 1
-TARGET = 900
+
+
+
 # ─── Worker wrappers ───────────────────────────────────────────────────────────
 def run_bidirectional(G: nx.Graph):
     tester = AStarVsBidirectionalComparison(G, SOURCE, TARGET)
@@ -207,6 +203,7 @@ def run_bidirectional(G: nx.Graph):
         draw_graph(G, source=SOURCE, target=TARGET, path=path, output_path="Graphs/path_bidirectional_astar.png")
     except nx.NetworkXNoPath:
         print("No path found for Bidirectional A*")
+
 
 def run_dstar(DG: nx.DiGraph):
     tester = DStarLiteVsAStarComparison(DG, SOURCE, TARGET)
@@ -220,6 +217,7 @@ def run_dstar(DG: nx.DiGraph):
     except nx.NetworkXNoPath:
         print("No path found for D* Lite")
 
+
 def run_idastar(G: nx.Graph):
     tester = IDAStarVsAStarComparison(G, SOURCE, TARGET)
     print("\n--- IDA* vs A* ---")
@@ -231,6 +229,7 @@ def run_idastar(G: nx.Graph):
     except Exception as e:
         print(f"IDA* path error: {e}")
 
+
 def run_rtaa(G: nx.Graph):
     tester = RTAAStarVsAStarComparison(G, SOURCE, TARGET, lookahead=100, move_limit=1)
     print("\n--- RTAA* vs A* ---")
@@ -241,6 +240,7 @@ def run_rtaa(G: nx.Graph):
         draw_graph(G, source=SOURCE, target=TARGET, path=path, output_path="Graphs/path_rtaa_star.png")
     except Exception as e:
         print(f"RTAA* path error: {e}")
+
 
 def run_sma(G: nx.Graph, memory_limit: int):
     tester = SMAStarVsAStarComparison(G, SOURCE, TARGET, memory_limit=memory_limit)
@@ -321,6 +321,9 @@ if __name__ == "__main__":
         output_path = f"Graphs/graph_{SOURCE}_to_{TARGET}.png"
         draw_graph(base_graph, source=SOURCE, target=TARGET, path=path, output_path=output_path)
         print(f"Grafo guardado como imagem em: {output_path}")
+
+        manager = Manager()
+        shared_results = manager.dict()
 
         # Iniciar testes
         print("Running tests...")

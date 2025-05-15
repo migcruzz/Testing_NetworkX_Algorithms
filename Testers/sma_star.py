@@ -1,3 +1,4 @@
+import random
 import statistics
 import time
 import tracemalloc
@@ -10,7 +11,7 @@ from Algorithms.sma_star import sma_star_path
 
 
 class SMAStarVsAStarComparison:
-    def __init__(self, graph: nx.Graph, source, target, heuristic=None, memory_limit=10000,n_modifications=50):
+    def __init__(self, graph: nx.Graph, source, target, heuristic=None, memory_limit=10000, n_modifications=50):
         self.graph = graph
         self.source = source
         self.target = target
@@ -134,4 +135,3 @@ class SMAStarVsAStarComparison:
         table = [[k, f"{v:.6f}" if isinstance(v, float) else v] for k, v in result.items()]
         print(tabulate(table, headers=["Metric", "Value"], tablefmt="grid"))
         return result
-
