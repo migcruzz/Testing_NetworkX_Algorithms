@@ -8,10 +8,12 @@ from networkx.algorithms.shortest_paths.astar import astar_path
 from tabulate import tabulate
 
 from Algorithms.sma_star import sma_star_path
+from Config import MEMORY_LIMIT
+
 
 
 class SMAStarVsAStarComparison:
-    def __init__(self, graph: nx.Graph, source, target, heuristic=None, memory_limit=10000, n_modifications=50):
+    def __init__(self, graph: nx.Graph, source, target, heuristic=None, memory_limit=MEMORY_LIMIT, n_modifications=50):
         self.graph = graph
         self.source = source
         self.target = target

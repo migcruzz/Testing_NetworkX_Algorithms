@@ -1,0 +1,8 @@
+MEMORY_LIMIT = 10
+LOOKAHEAD = 25
+MOVELIMIT = 3
+N_MODIFICATIONS = 100
+SOURCE = "Luxembourg"
+TARGET = "Barcelona"
+CSV_PATH = "Csv/cities_nodes_special.csv"
+EXCEL_FILE = "metrics.xlsx"

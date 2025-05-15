@@ -175,18 +175,11 @@ from Testers.ida_star import IDAStarVsAStarComparison
 from Testers.rtaa_star import RTAAStarVsAStarComparison
 from Testers.sma_star import SMAStarVsAStarComparison
 
+from Config import MEMORY_LIMIT, LOOKAHEAD, MOVELIMIT, N_MODIFICATIONS, SOURCE, TARGET, CSV_PATH, EXCEL_FILE
+
+
 # ─── Global settings ──────────────────────────────────────────────────────────
 DIRECTED = False
-SOURCE = "Luxembourg"
-TARGET = "Barcelona"
-CSV_PATH = "Csv/cities_nodes_special.csv"
-
-N_MODIFICATIONS = 100  # average edge-weight updates per algorithm
-LOOKAHEAD = 25
-MOVELIMIT = 3
-MEMORY_LIMIT = 1  # nodes kept in memory for SMA*
-MAX_NODES_IN_MEMORY=1
-EXCEL_FILE = "metrics.xlsx"
 
 
 # ─── Excel helpers ────────────────────────────────────────────────────────────

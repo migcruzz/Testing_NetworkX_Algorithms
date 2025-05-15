@@ -10,6 +10,9 @@ __all__ = ["sma_star_path", "sma_star_path_length"]
 
 from networkx.algorithms.shortest_paths.weighted import _weight_function
 
+from Config import MEMORY_LIMIT
+
+
 
 def euclidean_heuristic(G, u, v):
     """
@@ -41,7 +44,7 @@ def euclidean_heuristic(G, u, v):
 
 
 def sma_star_path(
-        G, source, target, heuristic=None, weight="weight", memory_limit=10000
+        G, source, target, heuristic=None, weight="weight", memory_limit=MEMORY_LIMIT
 ):
     """
     Returns the shortest path between 'source' and 'target' using the SMA* algorithm.
@@ -127,7 +130,7 @@ def sma_star_path(
 
 
 def sma_star_path_length(
-        G, source, target, heuristic=None, weight="weight", memory_limit=10000
+        G, source, target, heuristic=None, weight="weight", memory_limit=MEMORY_LIMIT
 ):
     """
     Returns the total cost of the shortest path found by SMA*.
