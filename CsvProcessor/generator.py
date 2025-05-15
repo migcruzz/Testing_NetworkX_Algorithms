@@ -1,9 +1,15 @@
+import pandas as pd
 import networkx as nx
-import random
 
-def generate_random_graph(n_nodes=20, n_edges=30, directed=False, weight_range=(1, 10000)) -> nx.Graph:
+def generate_graph_from_csv(csv_path: str, weight_field: str = "distance_km", directed=False) -> nx.Graph:
+    df = pd.read_csv(csv_path)
 
-    G = nx.gnm_random_graph(n=n_nodes, m=n_edges, directed=directed)
-    for u, v in G.edges():
-        G[u][v]['weight'] = random.randint(*weight_range)
+    G = nx.DiGraph() if directed else nx.Graph()
+
+    for _, row in df.iterrows():
+        src = row['origin_city']
+        dst = row['destination_city']
+        weight = float(row[weight_field])
+        G.add_edge(src, dst, weight=weight)
+
     return G
