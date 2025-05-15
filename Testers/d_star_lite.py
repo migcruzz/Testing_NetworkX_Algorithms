@@ -1,8 +1,9 @@
 import random
+import statistics
 import time
+import tracemalloc
 
 import networkx as nx
-from memory_profiler import memory_usage
 from tabulate import tabulate
 
 from Algorithms.d_star_lite import (
@@ -42,19 +43,32 @@ class DStarLiteVsAStarComparison:
             "D* Lite Cost": cost_d
         }
 
-    def compare_memory(self):
-        def run_dstar():
-            new_dstar_lite_instance(self.graph, self.source, self.target)
+    def compare_memory(self, runs: int = 5):
 
-        def run_astar():
+        peaks_astar = []
+        peaks_dstar = []
+
+        for _ in range(runs):
+            # A*
+            tracemalloc.start()
             nx.astar_path(self.graph, self.source, self.target, weight="weight")
+            _, peak_astar = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_astar.append(peak_astar)
 
-        mem_dstar = max(memory_usage(run_dstar, max_iterations=1))
-        mem_astar = max(memory_usage(run_astar, max_iterations=1))
+            # D* Lite
+            tracemalloc.start()
+            new_dstar_lite_instance(self.graph, self.source, self.target)
+            _, peak_dstar = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_dstar.append(peak_dstar)
 
+        mib = 1024 * 1024
         return {
-            "A* Memory (MiB)": mem_astar,
-            "D* Lite Memory (MiB)": mem_dstar
+            "A* Peak Memory (MiB)": max(peaks_astar) / mib,
+            "A* Avg Memory (MiB)": statistics.mean(peaks_astar) / mib,
+            "D* Lite Peak Memory (MiB)": max(peaks_dstar) / mib,
+            "D* Lite Avg Memory (MiB)": statistics.mean(peaks_dstar) / mib,
         }
 
     def compare_recalculation(self):

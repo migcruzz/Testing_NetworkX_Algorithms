@@ -1,7 +1,8 @@
+import statistics
 import time
+import tracemalloc
 
 import networkx as nx
-from memory_profiler import memory_usage
 from networkx.algorithms.shortest_paths.astar import astar_path
 from tabulate import tabulate
 
@@ -38,19 +39,32 @@ class SMAStarVsAStarComparison:
             "SMA* Cost": cost_sma,
         }
 
-    def compare_memory(self):
-        def run_astar():
-            astar_path(self.graph, self.source, self.target, weight="weight")
+    def compare_memory(self, runs: int = 5):
 
-        def run_sma():
+        peaks_astar = []
+        peaks_sma = []
+        mib = 1024 * 1024
+
+        for _ in range(runs):
+            # A*
+            tracemalloc.start()
+            nx.astar_path(self.graph, self.source, self.target, weight="weight")
+            _, peak_a = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_astar.append(peak_a / mib)
+
+            # SMA*
+            tracemalloc.start()
             sma_star_path(self.graph, self.source, self.target, heuristic=self.heuristic)
-
-        mem_astar = max(memory_usage(run_astar, max_iterations=1, interval=0.001))
-        mem_sma = max(memory_usage(run_sma, max_iterations=1, interval=0.001))
+            _, peak_s = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_sma.append(peak_s / mib)
 
         return {
-            "A* Memory (MiB)": mem_astar,
-            "SMA* Memory (MiB)": mem_sma,
+            "A* Peak Memory (MiB)": max(peaks_astar),
+            "A* Avg Memory (MiB)": statistics.mean(peaks_astar),
+            "SMA* Peak Memory (MiB)": max(peaks_sma),
+            "SMA* Avg Memory (MiB)": statistics.mean(peaks_sma),
         }
 
     def compare_recalculation(self):

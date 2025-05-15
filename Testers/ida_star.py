@@ -1,7 +1,8 @@
+import statistics
 import time
+import tracemalloc
 
 import networkx as nx
-from memory_profiler import memory_usage
 from tabulate import tabulate
 
 from Algorithms.ida_star import idastar_path
@@ -36,19 +37,32 @@ class IDAStarVsAStarComparison:
             "IDA* Cost": cost_ida
         }
 
-    def compare_memory(self):
-        def run_ida():
-            idastar_path(self.graph, self.source, self.target)
+    def compare_memory(self, runs: int = 5):
 
-        def run_astar():
+        peaks_astar = []
+        peaks_ida = []
+
+        for _ in range(runs):
+            # A*
+            tracemalloc.start()
             nx.astar_path(self.graph, self.source, self.target, weight="weight")
+            _, peak_astar = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_astar.append(peak_astar)
 
-        mem_ida = max(memory_usage(run_ida, max_iterations=1))
-        mem_astar = max(memory_usage(run_astar, max_iterations=1))
+            # IDA*
+            tracemalloc.start()
+            idastar_path(self.graph, self.source, self.target)
+            _, peak_ida = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_ida.append(peak_ida)
 
+        mib = 1024 * 1024
         return {
-            "A* Memory (MiB)": mem_astar,
-            "IDA* Memory (MiB)": mem_ida
+            "A* Peak Memory (MiB)": max(peaks_astar) / mib,
+            "A* Avg Memory (MiB)": statistics.mean(peaks_astar) / mib,
+            "IDA* Peak Memory (MiB)": max(peaks_ida) / mib,
+            "IDA* Avg Memory (MiB)": statistics.mean(peaks_ida) / mib,
         }
 
     def compare_recalculation(self):

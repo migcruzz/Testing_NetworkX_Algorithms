@@ -1,8 +1,8 @@
 import statistics
 import time
+import tracemalloc
 
 import networkx as nx
-from memory_profiler import memory_usage
 from tabulate import tabulate
 
 from Algorithms.bi_astar import bidirectional_astar
@@ -36,24 +36,31 @@ class AStarVsBidirectionalComparison:
             "Bidirectional A* Cost": cost_bi,
         }
 
-    def compare_memory(self):
-        def run_astar():
+    def compare_memory(self, runs: int = 5):
+        peaks_astar = []
+        peaks_bi = []
+
+        for _ in range(runs):
+            # A*
+            tracemalloc.start()
             nx.astar_path(self.graph, self.source, self.target, weight="weight")
+            _, peak_a = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_astar.append(peak_a)
 
-        def run_bi_astar():
+            # Bidirectional A*
+            tracemalloc.start()
             bidirectional_astar(self.graph, self.source, self.target)
+            _, peak_b = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_bi.append(peak_b)
 
-        max_mem_astar = max(memory_usage(run_astar, max_iterations=1))
-        max_mem_bi = max(memory_usage(run_bi_astar, max_iterations=1))
-
-        mean_mem_astar = statistics.mean(memory_usage(run_astar, max_iterations=1))
-        mean_mem_bi = statistics.mean(memory_usage(run_bi_astar, max_iterations=1))
-
+        mib = 1024 * 1024
         return {
-            "MAX A* Memory (MiB)": max_mem_astar,
-            "MIN Bidirectional A* Memory (MiB)": max_mem_bi,
-            "MEAN A* Memory (MiB)": mean_mem_astar,
-            "MEAN Bidirectional A* Memory (MiB)": mean_mem_bi,
+            "A* Peak Memory (MiB)": max(peaks_astar) / mib,
+            "A* Avg Memory (MiB)": statistics.mean(peaks_astar) / mib,
+            "Bi-A* Peak Memory (MiB)": max(peaks_bi) / mib,
+            "Bi-A* Avg Memory (MiB)": statistics.mean(peaks_bi) / mib,
         }
 
     def compare_recalculation(self):

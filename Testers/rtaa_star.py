@@ -1,7 +1,8 @@
+import statistics
 import time
+import tracemalloc
 
 import networkx as nx
-from memory_profiler import memory_usage
 from networkx.algorithms.shortest_paths.astar import astar_path
 from tabulate import tabulate
 
@@ -40,20 +41,38 @@ class RTAAStarVsAStarComparison:
             "RTAA* Cost": cost_rtaa,
         }
 
-    def compare_memory(self):
-        def run_astar():
+    def compare_memory(self, runs: int = 5):
+
+        peaks_astar = []
+        peaks_rtaa = []
+
+        for _ in range(runs):
+            # A*
+            tracemalloc.start()
             astar_path(self.graph, self.source, self.target, weight="weight")
+            _, peak_a = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_astar.append(peak_a)
 
-        def run_rtaa():
-            rtaa_star_path(self.graph, self.source, self.target,
-                           lookahead=self.lookahead, move_limit=self.move_limit)
+            # RTAA*
+            tracemalloc.start()
+            rtaa_star_path(
+                self.graph,
+                self.source,
+                self.target,
+                lookahead=self.lookahead,
+                move_limit=self.move_limit,
+            )
+            _, peak_r = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_rtaa.append(peak_r)
 
-        mem_astar = max(memory_usage(run_astar, max_iterations=1))
-        mem_rtaa = max(memory_usage(run_rtaa, max_iterations=1))
-
+        mib = 1024 * 1024
         return {
-            "A* Memory (MiB)": mem_astar,
-            "RTAA* Memory (MiB)": mem_rtaa,
+            "A* Peak Memory (MiB)": max(peaks_astar) / mib,
+            "A* Avg Memory (MiB)": statistics.mean(peaks_astar) / mib,
+            "RTAA* Peak Memory (MiB)": max(peaks_rtaa) / mib,
+            "RTAA* Avg Memory (MiB)": statistics.mean(peaks_rtaa) / mib,
         }
 
     def compare_recalculation(self):
