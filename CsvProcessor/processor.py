@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import List, Union
+
 import pandas as pd
 
 # Generic column names (adjust according to your CSV)
@@ -9,6 +10,7 @@ COL_ATTR1: str = "attr1"
 COL_ATTR2: str = "attr2"
 COL_ATTR3: str = "attr3"
 COL_RESULT: str = "combined_cost"
+
 
 class CSVLinearCombiner:
     """
@@ -20,10 +22,10 @@ class CSVLinearCombiner:
     """
 
     def __init__(
-        self,
-        file_path: Union[str, Path],
-        weights: List[float],
-        encoding: str = 'utf-8'
+            self,
+            file_path: Union[str, Path],
+            weights: List[float],
+            encoding: str = 'utf-8'
     ) -> None:
         self.file_path = Path(file_path)
         self.encoding = encoding
@@ -42,9 +44,9 @@ class CSVLinearCombiner:
 
         w0, w1, w2 = self.weights
         df[COL_RESULT] = (
-            w0 * df[COL_ATTR1]
-            + w1 * df[COL_ATTR2]
-            + w2 * df[COL_ATTR3]
+                w0 * df[COL_ATTR1]
+                + w1 * df[COL_ATTR2]
+                + w2 * df[COL_ATTR3]
         )
         return df
 
@@ -53,6 +55,7 @@ class CSVLinearCombiner:
         Returns the full CSV (including COL_RESULT) as a string without index.
         """
         return self.process().to_csv(index=False)
+
 
 """
 # Usage example:
@@ -66,4 +69,3 @@ if __name__ == '__main__':
     print(df_out.head())
 
 """
-
