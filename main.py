@@ -305,7 +305,6 @@ def run_tester(tester_class, graph, alg_name, shared_results, *args):
     shared_results[alg_name] = result
 
 
-
 # ─── Main ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     freeze_support()
@@ -325,8 +324,6 @@ if __name__ == "__main__":
 
         # Iniciar testes
         print("Running tests...")
-
-
 
         processes = [
             Process(
