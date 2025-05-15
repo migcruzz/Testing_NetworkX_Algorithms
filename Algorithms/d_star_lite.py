@@ -349,8 +349,8 @@ class DStarLite:
             current_key = self.queue.top_key()
             start_key = self.compute_key(self.source)
             if (
-                self.rhs[self.source] == self.g_score[self.source]
-                and current_key >= start_key
+                    self.rhs[self.source] == self.g_score[self.source]
+                    and current_key >= start_key
             ):
                 break
             u = self.queue.pop()

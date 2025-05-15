@@ -8,7 +8,7 @@ from networkx.algorithms.shortest_paths.astar import astar_path
 from tabulate import tabulate
 
 from Algorithms.sma_star import sma_star_path
-from Config import MEMORY_LIMIT
+from config import MEMORY_LIMIT
 
 
 

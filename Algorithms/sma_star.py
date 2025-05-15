@@ -10,7 +10,7 @@ __all__ = ["sma_star_path", "sma_star_path_length"]
 
 from networkx.algorithms.shortest_paths.weighted import _weight_function
 
-from Config import MEMORY_LIMIT
+from config import MEMORY_LIMIT
 
 
 

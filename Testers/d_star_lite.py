@@ -14,12 +14,12 @@ from Algorithms.d_star_lite import (
 
 
 class DStarLiteVsAStarComparison:
-    def __init__(self, graph: nx.DiGraph, source, target,n_modifications=50):
+    def __init__(self, graph: nx.DiGraph, source, target, n_modifications=50):
         self.graph = graph
         self.source = source
         self.target = target
         self.name = "D* Lite"
-        self.n_modifications=n_modifications
+        self.n_modifications = n_modifications
 
     def compare_initial_time(self):
         t0 = time.perf_counter()
@@ -70,12 +70,17 @@ class DStarLiteVsAStarComparison:
         }
 
     def compare_recalculation(self):
-        dstar = new_dstar_lite_instance(self.graph, self.source, self.target)
+        dstar_graph = self.graph.copy()
+        astar_graph = self.graph.copy()
+
+        dstar = new_dstar_lite_instance(dstar_graph, self.source, self.target)
         path = dstar.get_path()
         if not path or len(path) < 3:
             raise ValueError("Insufficient path for modification")
 
-        edges_to_modify = random.sample(list(zip(path, path[1:])), k=min(10, len(path) - 1))
+        edges_to_modify = random.sample(
+            list(zip(path, path[1:])), k=min(10, len(path) - 1)
+        )
 
         total_time_dstar = 0.0
         total_time_astar = 0.0
@@ -83,21 +88,25 @@ class DStarLiteVsAStarComparison:
         for u, v in edges_to_modify:
             new_w = random.randint(5, 50)
 
+            # --- D* Lite incremental update -------------------------
             t0 = time.perf_counter()
             d_star_modify_edge(dstar, u, v, new_w)
             d_star_recalculate_path(dstar)
             t1 = time.perf_counter()
             total_time_dstar += t1 - t0
 
-            self.graph[u][v]["weight"] = new_w
+            # --- A* full recomputation ------------------------------
+            astar_graph[u][v]["weight"] = new_w
             t0 = time.perf_counter()
-            _ = nx.astar_path_length(self.graph, self.source, self.target, weight="weight")
+            _ = nx.astar_path_length(
+                astar_graph, self.source, self.target, weight="weight"
+            )
             t1 = time.perf_counter()
             total_time_astar += t1 - t0
 
         return {
             "A* Recalc Total (s)": total_time_astar,
-            "D* Lite Recalc Total (s)": total_time_dstar
+            "D* Lite Recalc Total (s)": total_time_dstar,
         }
 
     def compare_bulk_modifications(self):

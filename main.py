@@ -7,23 +7,24 @@ import pandas as pd
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
 
+from Algorithms.bi_astar import bidirectional_astar
 from Algorithms.ida_star import idastar_path
 from Algorithms.rtaa_star import rtaa_star_path
 from Algorithms.sma_star import sma_star_path
-from Algorithms.bi_astar import bidirectional_astar
+from config import MEMORY_LIMIT, LOOKAHEAD, MOVELIMIT, N_MODIFICATIONS, SOURCE, TARGET, CSV_PATH, EXCEL_FILE, DIRECTED
 from CsvProcessor.generator import generate_graph_from_csv
+from Graphs.graphs import GraphPlotter
 from Testers.bi_astar import AStarVsBidirectionalComparison
 from Testers.d_star_lite import DStarLiteVsAStarComparison
 from Testers.ida_star import IDAStarVsAStarComparison
 from Testers.rtaa_star import RTAAStarVsAStarComparison
 from Testers.sma_star import SMAStarVsAStarComparison
-from Graphs.graphs import draw_graph
 
-from Config import MEMORY_LIMIT, LOOKAHEAD, MOVELIMIT, N_MODIFICATIONS, SOURCE, TARGET, CSV_PATH, EXCEL_FILE, DIRECTED
 
 # ─── Excel helpers ────────────────────────────────────────────────────────────
 def sanitize_sheet_name(name: str) -> str:
     return re.sub(r'[:\\/?*\[\]]', "", name)[:31]
+
 
 def append_sheet(result_dict, sheet_name, excel_path=EXCEL_FILE):
     df = pd.DataFrame(result_dict.items(), columns=["Metric", "Value"])
@@ -58,57 +59,40 @@ def append_sheet(result_dict, sheet_name, excel_path=EXCEL_FILE):
             )
             ws.column_dimensions[col_letter].width = max_len + 2
 
-# ─── Worker wrappers ──────────────────────────────────────────────────────────
+
+# Worker wrappers
+
 def run_bidirectional(graph, n_mods, shared):
     tester = AStarVsBidirectionalComparison(graph, SOURCE, TARGET, n_mods)
     shared["Bidirectional A*"] = tester.run_all()
-    try:
-        _, full_path, _ = bidirectional_astar(graph, SOURCE, TARGET)
-        draw_graph(graph, SOURCE, TARGET, path=full_path, metrics=shared["Bidirectional A*"], output_path="Graphs/Plots/path_bidirectional_astar.png")
-    except nx.NetworkXNoPath:
-        pass
+
 
 def run_dstar(di_graph, n_mods, shared):
     tester = DStarLiteVsAStarComparison(di_graph, SOURCE, TARGET, n_mods)
     shared["D* Lite"] = tester.run_all()
-    try:
-        path = nx.astar_path(di_graph, SOURCE, TARGET, weight="weight")
-        draw_graph(di_graph, SOURCE, TARGET, path=path, metrics=shared["D* Lite"], output_path="Graphs/Plots/path_dstar_lite.png")
-    except nx.NetworkXNoPath:
-        pass
+
 
 def run_idastar(graph, n_mods, shared):
     tester = IDAStarVsAStarComparison(graph, SOURCE, TARGET, n_mods)
     shared["IDA*"] = tester.run_all()
-    try:
-        path = idastar_path(graph, SOURCE, TARGET)
-        draw_graph(graph, SOURCE, TARGET, path=path, metrics=shared["IDA*"], output_path="Graphs/Plots/path_idastar.png")
-    except Exception:
-        pass
+
 
 def run_rtaa(graph, lookahead, move_limit, n_mods, shared):
-    tester = RTAAStarVsAStarComparison(graph, SOURCE, TARGET, lookahead, move_limit, n_mods)
     key = f"RTAA* (L={lookahead}, M={move_limit})"
+    tester = RTAAStarVsAStarComparison(graph, SOURCE, TARGET, lookahead, move_limit, n_mods)
     shared[key] = tester.run_all()
-    try:
-        path = rtaa_star_path(graph, SOURCE, TARGET, lookahead=lookahead, move_limit=move_limit)
-        draw_graph(graph, SOURCE, TARGET, path=path, metrics=shared[key], output_path="Graphs/Plots/path_rtaa_star.png")
-    except Exception:
-        pass
+
 
 def run_sma(graph, memory_limit, n_mods, shared):
-    tester = SMAStarVsAStarComparison(graph, SOURCE, TARGET, heuristic=None, n_modifications=n_mods, memory_limit=memory_limit)
+    tester = SMAStarVsAStarComparison(graph, SOURCE, TARGET, memory_limit=memory_limit, n_modifications=n_mods)
     shared["SMA*"] = tester.run_all()
-    try:
-        path = sma_star_path(graph, SOURCE, TARGET, memory_limit=memory_limit)
-        draw_graph(graph, SOURCE, TARGET, path=path, metrics=shared["SMA*"], output_path="Graphs/Plots/path_sma_star.png")
-    except Exception:
-        pass
+
 
 def launch(worker, *args):
     worker(*args)
 
-# ─── Main ─────────────────────────────────────────────────────────────────────
+
+# Main
 if __name__ == "__main__":
     freeze_support()
 
@@ -117,10 +101,10 @@ if __name__ == "__main__":
         print("No path between source and target. Aborting.")
         exit(1)
 
-    initial_path = nx.shortest_path(base_graph, SOURCE, TARGET, weight="weight")
-    draw_graph(base_graph, SOURCE, TARGET, path=initial_path, output_path=f"Graphs/Plots/graph_{SOURCE}_to_{TARGET}.png")
-
     directed_graph = base_graph.to_directed()
+    base_plotter = GraphPlotter(base_graph)
+    directed_plotter = GraphPlotter(directed_graph)
+
     manager = Manager()
     shared_results = manager.dict()
 
@@ -136,6 +120,43 @@ if __name__ == "__main__":
         p.start()
     for p in processes:
         p.join()
+
+    # Draw graphs with metrics (post-process)
+    try:
+        _, bidir_path, _ = bidirectional_astar(base_graph, SOURCE, TARGET)
+        base_plotter.draw(SOURCE, TARGET, path=bidir_path, metrics=shared_results["Bidirectional A*"],
+                          output_path="Graphs/Plots/path_bidirectional_astar.png")
+    except:
+        pass
+
+    try:
+        dstar_path = nx.astar_path(directed_graph, SOURCE, TARGET, weight="weight")
+        directed_plotter.draw(SOURCE, TARGET, path=dstar_path, metrics=shared_results["D* Lite"],
+                              output_path="Graphs/Plots/path_dstar_lite.png")
+    except:
+        pass
+
+    try:
+        ida_path = idastar_path(base_graph, SOURCE, TARGET)
+        base_plotter.draw(SOURCE, TARGET, path=ida_path, metrics=shared_results["IDA*"],
+                          output_path="Graphs/Plots/path_idastar.png")
+    except:
+        pass
+
+    try:
+        rtaa_path = rtaa_star_path(base_graph, SOURCE, TARGET, lookahead=LOOKAHEAD, move_limit=MOVELIMIT)
+        base_plotter.draw(SOURCE, TARGET, path=rtaa_path,
+                          metrics=shared_results[f"RTAA* (L={LOOKAHEAD}, M={MOVELIMIT})"],
+                          output_path="Graphs/Plots/path_rtaa_star.png")
+    except:
+        pass
+
+    try:
+        sma_path = sma_star_path(base_graph, SOURCE, TARGET, memory_limit=MEMORY_LIMIT)
+        base_plotter.draw(SOURCE, TARGET, path=sma_path, metrics=shared_results["SMA*"],
+                          output_path="Graphs/Plots/path_sma_star.png")
+    except:
+        pass
 
     for algorithm, metrics in shared_results.items():
         append_sheet(metrics, algorithm, EXCEL_FILE)
