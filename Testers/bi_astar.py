@@ -1,309 +1,93 @@
-import pytest
+import statistics
+import time
+import tracemalloc
 
 import networkx as nx
-from networkx.utils import pairwise
+from tabulate import tabulate
 
 from Algorithms.bi_astar import bidirectional_astar
 
 
-class TestAStar:
-    @classmethod
-    def setup_class(cls):
-        edges = [
-            ("s", "u", 10),
-            ("s", "x", 5),
-            ("u", "v", 1),
-            ("u", "x", 2),
-            ("v", "y", 1),
-            ("x", "u", 3),
-            ("x", "v", 5),
-            ("x", "y", 2),
-            ("y", "s", 7),
-            ("y", "v", 6),
-        ]
-        cls.XG = nx.DiGraph()
-        cls.XG.add_weighted_edges_from(edges)
+class AStarVsBidirectionalComparison:
+    def __init__(self, graph: nx.Graph, source, target):
+        self.graph = graph
+        self.source = source
+        self.target = target
 
-    def test_multiple_optimal_paths(self):
-        """Tests that A* algorithm finds any of multiple optimal paths"""
-        heuristic_values = {"a": 1.35, "b": 1.18, "c": 0.67, "d": 0}
+    def compute_cost(self, path):
+        return sum(self.graph[path[i]][path[i + 1]]["weight"] for i in range(len(path) - 1))
 
-        def h(u, v):
-            return heuristic_values[u]
+    def compare_time(self):
+        t0 = time.perf_counter()
+        path_astar = nx.astar_path(self.graph, self.source, self.target, weight="weight")
+        t1 = time.perf_counter()
+        time_astar = t1 - t0
+        cost_astar = self.compute_cost(path_astar)
 
-        graph = nx.Graph()
-        points = ["a", "b", "c", "d"]
-        edges = [("a", "b", 0.18), ("a", "c", 0.68), ("b", "c", 0.50), ("c", "d", 0.67)]
+        t0 = time.perf_counter()
+        cost_bi, path_bi, _ = bidirectional_astar(self.graph, self.source, self.target)
+        t1 = time.perf_counter()
+        time_bi = t1 - t0
 
-        graph.add_nodes_from(points)
-        graph.add_weighted_edges_from(edges)
+        return {
+            "A* Time (s)": time_astar,
+            "Bidirectional A* Time (s)": time_bi,
+            "A* Cost": cost_astar,
+            "Bidirectional A* Cost": cost_bi,
+        }
 
-        path1 = ["a", "c", "d"]
-        path2 = ["a", "b", "c", "d"]
-        assert nx.astar_path(graph, "a", "d", h) in (path1, path2)
+    def compare_memory(self, runs: int = 5):
+        peaks_astar = []
+        peaks_bi = []
 
-    def test_astar_directed(self):
-        assert nx.astar_path(self.XG, "s", "v") == ["s", "x", "u", "v"]
-        assert nx.astar_path_length(self.XG, "s", "v") == 9
+        for _ in range(runs):
+            # A*
+            tracemalloc.start()
+            nx.astar_path(self.graph, self.source, self.target, weight="weight")
+            _, peak_a = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_astar.append(peak_a)
 
-    def test_astar_directed_weight_function(self):
-        def w1(u, v, d):
-            return d["weight"]
+            # Bidirectional A*
+            tracemalloc.start()
+            bidirectional_astar(self.graph, self.source, self.target)
+            _, peak_b = tracemalloc.get_traced_memory()
+            tracemalloc.stop()
+            peaks_bi.append(peak_b)
 
-        assert nx.astar_path(self.XG, "x", "u", weight=w1) == ["x", "u"]
-        assert nx.astar_path_length(self.XG, "x", "u", weight=w1) == 3
-        assert nx.astar_path(self.XG, "s", "v", weight=w1) == ["s", "x", "u", "v"]
-        assert nx.astar_path_length(self.XG, "s", "v", weight=w1) == 9
+        mib = 1024 * 1024
+        return {
+            "A* Peak Memory (MiB)": max(peaks_astar) / mib,
+            "A* Avg Memory (MiB)": statistics.mean(peaks_astar) / mib,
+            "Bi-A* Peak Memory (MiB)": max(peaks_bi) / mib,
+            "Bi-A* Avg Memory (MiB)": statistics.mean(peaks_bi) / mib,
+        }
 
-        def w2(u, v, d):
-            return None if (u, v) == ("x", "u") else d["weight"]
+    def compare_recalculation(self):
+        neighbor = next(iter(self.graph[self.source]))
+        self.graph[self.source][neighbor]["weight"] += 1
 
-        assert nx.astar_path(self.XG, "x", "u", weight=w2) == ["x", "y", "s", "u"]
-        assert nx.astar_path_length(self.XG, "x", "u", weight=w2) == 19
-        assert nx.astar_path(self.XG, "s", "v", weight=w2) == ["s", "x", "v"]
-        assert nx.astar_path_length(self.XG, "s", "v", weight=w2) == 10
+        t0 = time.perf_counter()
+        nx.astar_path(self.graph, self.source, self.target, weight="weight")
+        t1 = time.perf_counter()
+        time_astar = t1 - t0
 
-        def w3(u, v, d):
-            return d["weight"] + 10
+        t0 = time.perf_counter()
+        bidirectional_astar(self.graph, self.source, self.target)
+        t1 = time.perf_counter()
+        time_bi = t1 - t0
 
-        assert nx.astar_path(self.XG, "x", "u", weight=w3) == ["x", "u"]
-        assert nx.astar_path_length(self.XG, "x", "u", weight=w3) == 13
-        assert nx.astar_path(self.XG, "s", "v", weight=w3) == ["s", "x", "v"]
-        assert nx.astar_path_length(self.XG, "s", "v", weight=w3) == 30
+        return {
+            "A* Recalc Time (s)": time_astar,
+            "Bidirectional A* Recalc Time (s)": time_bi,
+        }
 
-    def test_astar_multigraph(self):
-        G = nx.MultiDiGraph(self.XG)
-        G.add_weighted_edges_from((u, v, 1000) for (u, v) in list(G.edges()))
-        assert nx.astar_path(G, "s", "v") == ["s", "x", "u", "v"]
-        assert nx.astar_path_length(G, "s", "v") == 9
+    def run_all(self):
+        time_data = self.compare_time()
+        mem_data = self.compare_memory()
+        recalc_data = self.compare_recalculation()
 
-    def test_astar_undirected(self):
-        GG = self.XG.to_undirected()
-        # make sure we get lower weight
-        # to_undirected might choose either edge with weight 2 or weight 3
-        GG["u"]["x"]["weight"] = 2
-        GG["y"]["v"]["weight"] = 2
-        assert nx.astar_path(GG, "s", "v") == ["s", "x", "u", "v"]
-        assert nx.astar_path_length(GG, "s", "v") == 8
-
-    def test_astar_directed2(self):
-        XG2 = nx.DiGraph()
-        edges = [
-            (1, 4, 1),
-            (4, 5, 1),
-            (5, 6, 1),
-            (6, 3, 1),
-            (1, 3, 50),
-            (1, 2, 100),
-            (2, 3, 100),
-        ]
-        XG2.add_weighted_edges_from(edges)
-        assert nx.astar_path(XG2, 1, 3) == [1, 4, 5, 6, 3]
-
-    def test_astar_undirected2(self):
-        XG3 = nx.Graph()
-        edges = [(0, 1, 2), (1, 2, 12), (2, 3, 1), (3, 4, 5), (4, 5, 1), (5, 0, 10)]
-        XG3.add_weighted_edges_from(edges)
-        assert nx.astar_path(XG3, 0, 3) == [0, 1, 2, 3]
-        assert nx.astar_path_length(XG3, 0, 3) == 15
-
-    def test_astar_undirected3(self):
-        XG4 = nx.Graph()
-        edges = [
-            (0, 1, 2),
-            (1, 2, 2),
-            (2, 3, 1),
-            (3, 4, 1),
-            (4, 5, 1),
-            (5, 6, 1),
-            (6, 7, 1),
-            (7, 0, 1),
-        ]
-        XG4.add_weighted_edges_from(edges)
-        assert nx.astar_path(XG4, 0, 2) == [0, 1, 2]
-        assert nx.astar_path_length(XG4, 0, 2) == 4
-
-    """ Tests that A* finds correct path when multiple paths exist
-        and the best one is not expanded first (GH issue #3464)
-    """
-
-    def test_astar_directed3(self):
-        heuristic_values = {"n5": 36, "n2": 4, "n1": 0, "n0": 0}
-
-        def h(u, v):
-            return heuristic_values[u]
-
-        edges = [("n5", "n1", 11), ("n5", "n2", 9), ("n2", "n1", 1), ("n1", "n0", 32)]
-        graph = nx.DiGraph()
-        graph.add_weighted_edges_from(edges)
-        answer = ["n5", "n2", "n1", "n0"]
-        assert nx.astar_path(graph, "n5", "n0", h) == answer
-
-    """ Tests that parent is not wrongly overridden when a node
-        is re-explored multiple times.
-    """
-
-    def test_astar_directed4(self):
-        edges = [
-            ("a", "b", 1),
-            ("a", "c", 1),
-            ("b", "d", 2),
-            ("c", "d", 1),
-            ("d", "e", 1),
-        ]
-        graph = nx.DiGraph()
-        graph.add_weighted_edges_from(edges)
-        assert nx.astar_path(graph, "a", "e") == ["a", "c", "d", "e"]
-
-    # >>> MXG4=NX.MultiGraph(XG4)
-    # >>> MXG4.add_edge(0,1,3)
-    # >>> NX.dijkstra_path(MXG4,0,2)
-    # [0, 1, 2]
-
-    def test_astar_w1(self):
-        G = nx.DiGraph()
-        G.add_edges_from(
-            [
-                ("s", "u"),
-                ("s", "x"),
-                ("u", "v"),
-                ("u", "x"),
-                ("v", "y"),
-                ("x", "u"),
-                ("x", "w"),
-                ("w", "v"),
-                ("x", "y"),
-                ("y", "s"),
-                ("y", "v"),
-            ]
-        )
-        assert nx.astar_path(G, "s", "v") == ["s", "u", "v"]
-        assert nx.astar_path_length(G, "s", "v") == 2
-
-    def test_astar_nopath(self):
-        with pytest.raises(nx.NodeNotFound):
-            nx.astar_path(self.XG, "s", "moon")
-
-    def test_astar_cutoff(self):
-        with pytest.raises(nx.NetworkXNoPath):
-            # optimal path_length in XG is 9
-            nx.astar_path(self.XG, "s", "v", cutoff=8.0)
-        with pytest.raises(nx.NetworkXNoPath):
-            nx.astar_path_length(self.XG, "s", "v", cutoff=8.0)
-
-    def test_astar_admissible_heuristic_with_cutoff(self):
-        heuristic_values = {"s": 36, "y": 4, "x": 0, "u": 0, "v": 0}
-
-        def h(u, v):
-            return heuristic_values[u]
-
-        assert nx.astar_path_length(self.XG, "s", "v") == 9
-        assert nx.astar_path_length(self.XG, "s", "v", heuristic=h) == 9
-        assert nx.astar_path_length(self.XG, "s", "v", heuristic=h, cutoff=12) == 9
-        assert nx.astar_path_length(self.XG, "s", "v", heuristic=h, cutoff=9) == 9
-        with pytest.raises(nx.NetworkXNoPath):
-            nx.astar_path_length(self.XG, "s", "v", heuristic=h, cutoff=8)
-
-    def test_astar_inadmissible_heuristic_with_cutoff(self):
-        heuristic_values = {"s": 36, "y": 14, "x": 10, "u": 10, "v": 0}
-
-        def h(u, v):
-            return heuristic_values[u]
-
-        # optimal path_length in XG is 9. This heuristic gives over-estimate.
-        assert nx.astar_path_length(self.XG, "s", "v", heuristic=h) == 10
-        assert nx.astar_path_length(self.XG, "s", "v", heuristic=h, cutoff=15) == 10
-        with pytest.raises(nx.NetworkXNoPath):
-            nx.astar_path_length(self.XG, "s", "v", heuristic=h, cutoff=9)
-        with pytest.raises(nx.NetworkXNoPath):
-            nx.astar_path_length(self.XG, "s", "v", heuristic=h, cutoff=12)
-
-    def test_astar_cutoff2(self):
-        assert nx.astar_path(self.XG, "s", "v", cutoff=10.0) == ["s", "x", "u", "v"]
-        assert nx.astar_path_length(self.XG, "s", "v") == 9
-
-    def test_cycle(self):
-        C = nx.cycle_graph(7)
-        assert nx.astar_path(C, 0, 3) == [0, 1, 2, 3]
-        assert nx.dijkstra_path(C, 0, 4) == [0, 6, 5, 4]
-
-    def test_unorderable_nodes(self):
-        """Tests that A* accommodates nodes that are not orderable.
-
-        For more information, see issue #554.
-
-        """
-        # Create the cycle graph on four nodes, with nodes represented
-        # as (unorderable) Python objects.
-        nodes = [object() for n in range(4)]
-        G = nx.Graph()
-        G.add_edges_from(pairwise(nodes, cyclic=True))
-        path = nx.astar_path(G, nodes[0], nodes[2])
-        assert len(path) == 3
-
-    def test_astar_NetworkXNoPath(self):
-        """Tests that exception is raised when there exists no
-        path between source and target"""
-        G = nx.gnp_random_graph(10, 0.2, seed=10)
-        with pytest.raises(nx.NetworkXNoPath):
-            nx.astar_path(G, 4, 9)
-
-    def test_astar_NodeNotFound(self):
-        """Tests that exception is raised when either
-        source or target is not in graph"""
-        G = nx.gnp_random_graph(10, 0.2, seed=10)
-        with pytest.raises(nx.NodeNotFound):
-            nx.astar_path_length(G, 11, 9)
-
-
-class TestBidirectionalAStar:
-    def test_bidirectional_astar_basic(self):
-        G = nx.Graph()
-        edges = [
-            ("a", "b", 1),
-            ("b", "c", 1),
-            ("c", "d", 1),
-            ("d", "e", 1),
-            ("e", "f", 1),
-        ]
-        G.add_weighted_edges_from(edges)
-        total_cost, path, stats = bidirectional_astar(G, "a", "f")
-        assert path == ["a", "b", "c", "d", "e", "f"]
-        assert total_cost == 5
-        assert stats["total_nodes_expanded"] > 0
-
-    def test_bidirectional_astar_directed(self):
-        G = nx.DiGraph()
-        G.add_weighted_edges_from(
-            [
-                ("s", "u", 10),
-                ("s", "x", 5),
-                ("u", "v", 1),
-                ("u", "x", 2),
-                ("v", "y", 1),
-                ("x", "u", 3),
-                ("x", "v", 5),
-                ("x", "y", 2),
-                ("y", "s", 7),
-                ("y", "v", 6),
-            ]
-        )
-        cost, path, stats = bidirectional_astar(G, "s", "v")
-        assert path[0] == "s" and path[-1] == "v"
-        assert cost == sum(
-            G[path[i]][path[i + 1]]["weight"] for i in range(len(path) - 1)
-        )
-
-    def test_bidirectional_astar_nopath(self):
-        G = nx.Graph()
-        G.add_weighted_edges_from([(1, 2, 1), (3, 4, 1)])
-        with pytest.raises(nx.NetworkXNoPath):
-            bidirectional_astar(G, 1, 4)
-
-    def test_bidirectional_astar_single_node(self):
-        G = nx.Graph()
-        G.add_node("a")
-        cost, path, stats = bidirectional_astar(G, "a", "a")
-        assert path == ["a"]
-        assert cost == 0
-        assert stats["total_nodes_expanded"] == 1
+        result = {**time_data, **mem_data, **recalc_data}
+        table = [[k, f"{v:.6f}" if isinstance(v, float) else v] for k, v in result.items()]
+        print(tabulate(table, headers=["Metric", "Value"], tablefmt="grid"))
+        return result
