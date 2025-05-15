@@ -10,11 +10,12 @@ from Algorithms.sma_star import sma_star_path
 
 
 class SMAStarVsAStarComparison:
-    def __init__(self, graph: nx.Graph, source, target, heuristic=None):
+    def __init__(self, graph: nx.Graph, source, target, heuristic=None, memory_limit=10000):
         self.graph = graph
         self.source = source
         self.target = target
         self.heuristic = heuristic
+        self.memory_limit = memory_limit
 
     def compute_cost(self, path):
         return sum(self.graph[path[i]][path[i + 1]]["weight"] for i in range(len(path) - 1))
@@ -27,7 +28,11 @@ class SMAStarVsAStarComparison:
         cost_astar = self.compute_cost(path_astar)
 
         t0 = time.perf_counter()
-        path_sma = sma_star_path(self.graph, self.source, self.target, heuristic=self.heuristic)
+        path_sma = sma_star_path(
+            self.graph, self.source, self.target,
+            heuristic=self.heuristic,
+            memory_limit=self.memory_limit
+        )
         t1 = time.perf_counter()
         time_sma = t1 - t0
         cost_sma = self.compute_cost(path_sma)
@@ -40,22 +45,23 @@ class SMAStarVsAStarComparison:
         }
 
     def compare_memory(self, runs: int = 5):
-
         peaks_astar = []
         peaks_sma = []
         mib = 1024 * 1024
 
         for _ in range(runs):
-            # A*
             tracemalloc.start()
             nx.astar_path(self.graph, self.source, self.target, weight="weight")
             _, peak_a = tracemalloc.get_traced_memory()
             tracemalloc.stop()
             peaks_astar.append(peak_a / mib)
 
-            # SMA*
             tracemalloc.start()
-            sma_star_path(self.graph, self.source, self.target, heuristic=self.heuristic)
+            sma_star_path(
+                self.graph, self.source, self.target,
+                heuristic=self.heuristic,
+                memory_limit=self.memory_limit
+            )
             _, peak_s = tracemalloc.get_traced_memory()
             tracemalloc.stop()
             peaks_sma.append(peak_s / mib)
@@ -77,7 +83,11 @@ class SMAStarVsAStarComparison:
         time_astar = t1 - t0
 
         t0 = time.perf_counter()
-        sma_star_path(self.graph, self.source, self.target, heuristic=self.heuristic)
+        sma_star_path(
+            self.graph, self.source, self.target,
+            heuristic=self.heuristic,
+            memory_limit=self.memory_limit
+        )
         t1 = time.perf_counter()
         time_sma = t1 - t0
 
@@ -95,3 +105,4 @@ class SMAStarVsAStarComparison:
         table = [[k, f"{v:.6f}" if isinstance(v, float) else v] for k, v in result.items()]
         print(tabulate(table, headers=["Metric", "Value"], tablefmt="grid"))
         return result
+
