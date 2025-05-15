@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Union
 import pandas as pd
 
-# Generic column names (adjust according to your CSV)
+# Generic column names (adjust according to your Csv)
 COL_SOURCE: str = "origin"
 COL_TARGET: str = "destination"
 COL_ATTR1: str = "attr1"
@@ -12,7 +12,7 @@ COL_RESULT: str = "combined_cost"
 
 class CSVLinearCombiner:
     """
-    Reads an edge list CSV with generic columns:
+    Reads an edge list Csv with generic columns:
       - COL_SOURCE (e.g., 'origin')
       - COL_TARGET (e.g., 'destination')
       - COL_ATTR1, COL_ATTR2, COL_ATTR3 (attributes to combine)
@@ -38,7 +38,7 @@ class CSVLinearCombiner:
         required = {COL_SOURCE, COL_TARGET, COL_ATTR1, COL_ATTR2, COL_ATTR3}
         missing = required - set(df.columns)
         if missing:
-            raise ValueError(f"Missing columns in CSV: {missing}")
+            raise ValueError(f"Missing columns in Csv: {missing}")
 
         w0, w1, w2 = self.weights
         df[COL_RESULT] = (
@@ -50,7 +50,7 @@ class CSVLinearCombiner:
 
     def to_csv(self) -> str:
         """
-        Returns the full CSV (including COL_RESULT) as a string without index.
+        Returns the full Csv (including COL_RESULT) as a string without index.
         """
         return self.process().to_csv(index=False)
 

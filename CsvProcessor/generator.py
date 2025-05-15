@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate a random directed graph with weights, save it as CSV,
+Generate a random directed graph with weights, save it as Csv,
 and produce an interactive HTML visualization (pan/zoom) using pure NetworkX + mpld3.
 """
 
@@ -23,7 +23,7 @@ def main():
     for u, v in G.edges():
         G[u][v]['weight'] = round(random.uniform(1, 10), 2)
 
-    # 3) Export to CSV
+    # 3) Export to Csv
     df = nx.to_pandas_edgelist(G)
     df.to_csv(CSV_PATH, index=False)
     print(f"Saved edge list to {CSV_PATH}")
