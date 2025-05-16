@@ -1,9 +1,10 @@
 MEMORY_LIMIT = 26
 LOOKAHEAD = 25
 MOVELIMIT = 3
-N_MODIFICATIONS = 80
-SOURCE = "Tirana"
-TARGET = "Ljubljana"
+N_MODIFICATIONS = 10
+SOURCE = "Prague"
+TARGET = "Riga"
 CSV_PATH = "Csv/cities_nodes_special_original.csv"
+CSV_PROCESSED_PATH = "Csv/Processed/processed.csv"
 EXCEL_FILE = "metrics.xlsx"
 DIRECTED = False

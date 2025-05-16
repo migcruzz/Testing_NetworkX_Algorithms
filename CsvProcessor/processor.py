@@ -4,11 +4,11 @@ from typing import List, Union
 import pandas as pd
 
 # Generic column names (adjust according to your CSV)
-COL_SOURCE: str = "origin"
-COL_TARGET: str = "destination"
-COL_ATTR1: str = "attr1"
-COL_ATTR2: str = "attr2"
-COL_ATTR3: str = "attr3"
+COL_SOURCE = "origin_city"
+COL_TARGET = "destination_city"
+COL_ATTR1 = "toll"
+COL_ATTR2 = "fuel"
+COL_ATTR3 = "distance_km"
 COL_RESULT: str = "combined_cost"
 
 
@@ -55,6 +55,17 @@ class CSVLinearCombiner:
         Returns the full CSV (including COL_RESULT) as a string without index.
         """
         return self.process().to_csv(index=False)
+
+
+    def save(self, output_path: Union[str, Path], **kwargs) -> Path:
+        """
+        Process the CSV and write the full DataFrame (with COL_RESULT)
+        to *output_path*. Extra keyword arguments are passed straight
+        to pandas.DataFrame.to_csv().
+        """
+        out = Path(output_path)
+        self.process().to_csv(out, index=False, encoding=self.encoding, **kwargs)
+        return out
 
 
 """

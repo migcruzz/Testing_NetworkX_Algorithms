@@ -11,14 +11,16 @@ from Algorithms.bi_astar import bidirectional_astar
 from Algorithms.ida_star import idastar_path
 from Algorithms.rtaa_star import rtaa_star_path
 from Algorithms.sma_star import sma_star_path
-from config import MEMORY_LIMIT, LOOKAHEAD, MOVELIMIT, N_MODIFICATIONS, SOURCE, TARGET, CSV_PATH, EXCEL_FILE, DIRECTED
 from CsvProcessor.generator import generate_graph_from_csv
+from CsvProcessor.processor import CSVLinearCombiner
 from Graphs.graphs import GraphPlotter
 from Testers.bi_astar import AStarVsBidirectionalComparison
 from Testers.d_star_lite import DStarLiteVsAStarComparison
 from Testers.ida_star import IDAStarVsAStarComparison
 from Testers.rtaa_star import RTAAStarVsAStarComparison
 from Testers.sma_star import SMAStarVsAStarComparison
+from config import MEMORY_LIMIT, LOOKAHEAD, MOVELIMIT, N_MODIFICATIONS, SOURCE, TARGET, EXCEL_FILE, DIRECTED, \
+    CSV_PROCESSED_PATH, CSV_PATH
 
 
 # ─── Excel helpers ────────────────────────────────────────────────────────────
@@ -96,7 +98,18 @@ def launch(worker, *args):
 if __name__ == "__main__":
     freeze_support()
 
-    base_graph = generate_graph_from_csv(CSV_PATH, "distance_km", DIRECTED)
+    combiner = CSVLinearCombiner(
+        file_path=Path(CSV_PATH),
+        weights=[0.33, 0.33, 0.33],  # w0, w1, w2
+        encoding="utf-8",
+    )
+
+    df_out = combiner.process()
+    df_out.to_csv(Path(CSV_PROCESSED_PATH),
+                  index=False,
+                  encoding="utf-8")
+
+    base_graph = generate_graph_from_csv(CSV_PROCESSED_PATH, "distance_km", DIRECTED)
     if not nx.has_path(base_graph, SOURCE, TARGET):
         print("No path between source and target. Aborting.")
         exit(1)
