@@ -64,6 +64,17 @@ def append_sheet(result_dict, sheet_name, excel_path=EXCEL_FILE):
 
 # Worker wrappers
 
+def run_astar(graph, n_mods_unused, shared):
+    try:
+        path = nx.astar_path(graph, SOURCE, TARGET, weight="weight")
+        cost = sum(graph[u][v]["weight"] for u, v in zip(path, path[1:]))
+
+        shared["A*"] = {"Cost": cost, "Path length": len(path) - 1}
+
+    except Exception as exc:
+        print("Erro no worker A* :", exc)
+
+
 def run_bidirectional(graph, n_mods, shared):
     tester = AStarVsBidirectionalComparison(graph, SOURCE, TARGET, n_mods)
     shared["Bidirectional A*"] = tester.run_all()
@@ -109,7 +120,7 @@ if __name__ == "__main__":
                   index=False,
                   encoding="utf-8")
 
-    base_graph = generate_graph_from_csv(CSV_PROCESSED_PATH, "distance_km", DIRECTED)
+    base_graph = generate_graph_from_csv(CSV_PROCESSED_PATH, "combined_cost", DIRECTED)
     if not nx.has_path(base_graph, SOURCE, TARGET):
         print("No path between source and target. Aborting.")
         exit(1)
@@ -121,7 +132,22 @@ if __name__ == "__main__":
     manager = Manager()
     shared_results = manager.dict()
 
+    try:
+        astar_path = nx.astar_path(base_graph, SOURCE, TARGET, weight="weight")
+        cost = sum(base_graph[u][v]["weight"] for u, v in zip(astar_path, astar_path[1:]))
+
+        base_plotter.draw(
+            source=SOURCE,
+            target=TARGET,
+            path=astar_path,
+            metrics={"Cost": cost},
+            output_path="Graphs/Plots/path_astar.png"
+        )
+    except Exception as e:
+        print("Erro ao desenhar caminho A*:", e)
+
     processes = [
+        Process(target=launch, args=(run_astar, base_graph, N_MODIFICATIONS, shared_results)),
         Process(target=launch, args=(run_bidirectional, base_graph, N_MODIFICATIONS, shared_results)),
         Process(target=launch, args=(run_dstar, directed_graph, N_MODIFICATIONS, shared_results)),
         Process(target=launch, args=(run_idastar, base_graph, N_MODIFICATIONS, shared_results)),
