@@ -64,6 +64,8 @@ def run_bidirectional(graph, n_mods, shared):
     shared["Bidirectional A*"] = tester.run_all()
     try:
         _, full_path, _ = bidirectional_astar(graph, SOURCE, TARGET)
+        ## Drawing the original graph
+        draw_graph(graph,output_path="Graphs/Plots/OriginalPath.svg")
         draw_graph(graph, SOURCE, TARGET, path=full_path, metrics=shared["Bidirectional A*"], output_path="Graphs/Plots/path_bidirectional_astar.png")
     except nx.NetworkXNoPath:
         pass
