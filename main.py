@@ -17,7 +17,7 @@ from Testers.d_star_lite import DStarLiteVsAStarComparison
 from Testers.ida_star import IDAStarVsAStarComparison
 from Testers.rtaa_star import RTAAStarVsAStarComparison
 from Testers.sma_star import SMAStarVsAStarComparison
-from Graphs.graphs import draw_graph
+from Graphs.graphs import draw_graph, draw_big_graph
 
 from Config import MEMORY_LIMIT, LOOKAHEAD, MOVELIMIT, N_MODIFICATIONS, SOURCE, TARGET, CSV_PATH, EXCEL_FILE, DIRECTED
 
@@ -65,8 +65,8 @@ def run_bidirectional(graph, n_mods, shared):
     try:
         _, full_path, _ = bidirectional_astar(graph, SOURCE, TARGET)
         ## Drawing the original graph
-        draw_graph(graph,output_path="Graphs/Plots/OriginalPath.svg")
-        draw_graph(graph, SOURCE, TARGET, path=full_path, metrics=shared["Bidirectional A*"], output_path="Graphs/Plots/path_bidirectional_astar.png")
+        draw_big_graph(graph,output_path="Graphs/Plots/OriginalPath.svg")
+        draw_graph(graph, SOURCE, TARGET, path=full_path, metrics=shared["Bidirectional A*"], output_path="Graphs/Plots/path_bidirectional_astar.svg")
     except nx.NetworkXNoPath:
         pass
 
@@ -75,7 +75,7 @@ def run_dstar(di_graph, n_mods, shared):
     shared["D* Lite"] = tester.run_all()
     try:
         path = nx.astar_path(di_graph, SOURCE, TARGET, weight="weight")
-        draw_graph(di_graph, SOURCE, TARGET, path=path, metrics=shared["D* Lite"], output_path="Graphs/Plots/path_dstar_lite.png")
+        draw_graph(di_graph, SOURCE, TARGET, path=path, metrics=shared["D* Lite"], output_path="Graphs/Plots/path_dstar_lite.svg")
     except nx.NetworkXNoPath:
         pass
 
@@ -84,7 +84,7 @@ def run_idastar(graph, n_mods, shared):
     shared["IDA*"] = tester.run_all()
     try:
         path = idastar_path(graph, SOURCE, TARGET)
-        draw_graph(graph, SOURCE, TARGET, path=path, metrics=shared["IDA*"], output_path="Graphs/Plots/path_idastar.png")
+        draw_graph(graph, SOURCE, TARGET, path=path, metrics=shared["IDA*"], output_path="Graphs/Plots/path_idastar.svg")
     except Exception:
         pass
 
@@ -94,7 +94,7 @@ def run_rtaa(graph, lookahead, move_limit, n_mods, shared):
     shared[key] = tester.run_all()
     try:
         path = rtaa_star_path(graph, SOURCE, TARGET, lookahead=lookahead, move_limit=move_limit)
-        draw_graph(graph, SOURCE, TARGET, path=path, metrics=shared[key], output_path="Graphs/Plots/path_rtaa_star.png")
+        draw_graph(graph, SOURCE, TARGET, path=path, metrics=shared[key], output_path="Graphs/Plots/path_rtaa_star.svg")
     except Exception:
         pass
 
@@ -103,7 +103,7 @@ def run_sma(graph, memory_limit, n_mods, shared):
     shared["SMA*"] = tester.run_all()
     try:
         path = sma_star_path(graph, SOURCE, TARGET, memory_limit=memory_limit)
-        draw_graph(graph, SOURCE, TARGET, path=path, metrics=shared["SMA*"], output_path="Graphs/Plots/path_sma_star.png")
+        draw_graph(graph, SOURCE, TARGET, path=path, metrics=shared["SMA*"], output_path="Graphs/Plots/path_sma_star.svg")
     except Exception:
         pass
 
@@ -120,7 +120,7 @@ if __name__ == "__main__":
         exit(1)
 
     initial_path = nx.shortest_path(base_graph, SOURCE, TARGET, weight="weight")
-    draw_graph(base_graph, SOURCE, TARGET, path=initial_path, output_path=f"Graphs/Plots/graph_{SOURCE}_to_{TARGET}.png")
+    draw_graph(base_graph, SOURCE, TARGET, path=initial_path, output_path=f"Graphs/Plots/graph_{SOURCE}_to_{TARGET}.svg")
 
     directed_graph = base_graph.to_directed()
     manager = Manager()
