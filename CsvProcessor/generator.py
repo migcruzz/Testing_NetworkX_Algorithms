@@ -12,4 +12,6 @@ def generate_graph_from_csv(csv_path: str, weight_field: str = "distance_km", di
         weight = float(row[weight_field])
         G.add_edge(src, dst, weight=weight)
 
+    print(G)
+
     return G

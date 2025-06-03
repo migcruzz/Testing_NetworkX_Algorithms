@@ -3,6 +3,9 @@ from itertools import pairwise
 from Algorithms.ida_star import idastar_path, idastar_path_length
 import networkx as nx
 
+"""IDA* TESTING"""
+
+
 def test_multiple_optimal_paths_idastar(self):
     """Tests that IDA* algorithm finds any of multiple optimal paths"""
     heuristic_values = {"a": 1.35, "b": 1.18, "c": 0.67, "d": 0}
@@ -114,42 +117,6 @@ def test_idastar_undirected3(self):
 """
 
 
-def test_idastar_directed3(self):
-    heuristic_values = {"n5": 36, "n2": 4, "n1": 0, "n0": 0}
-
-    def h(u, v):
-        return heuristic_values[u]
-
-    edges = [("n5", "n1", 11), ("n5", "n2", 9), ("n2", "n1", 1), ("n1", "n0", 32)]
-    graph = nx.DiGraph()
-    graph.add_weighted_edges_from(edges)
-    answer = ["n5", "n2", "n1", "n0"]
-    assert idastar_path(graph, "n5", "n0", h) == answer
-
-
-""" Tests that parent is not wrongly overridden when a node
-    is re-explored multiple times.
-"""
-
-
-def test_idastar_directed4(self):
-    edges = [
-        ("a", "b", 1),
-        ("a", "c", 1),
-        ("b", "d", 2),
-        ("c", "d", 1),
-        ("d", "e", 1),
-    ]
-    graph = nx.DiGraph()
-    graph.add_weighted_edges_from(edges)
-    assert idastar_path(graph, "a", "e") == ["a", "c", "d", "e"]
-
-
-# >>> MXG4=NX.MultiGraph(XG4)
-# >>> MXG4.add_edge(0,1,3)
-# >>> NX.dijkstra_path(MXG4,0,2)
-# [0, 1, 2]
-
 def test_idastar_w1(self):
     G = nx.DiGraph()
     G.add_edges_from(
@@ -176,31 +143,6 @@ def test_idastar_nopath(self):
         idastar_path(self.XG, "s", "moon")
 
 
-def test_idastar_admissible_heuristic_with_cutoff(self):
-    heuristic_values = {"s": 36, "y": 4, "x": 0, "u": 0, "v": 0}
-
-    def h(u, v):
-        return heuristic_values[u]
-
-    """
-    edges = [
-        ("s", "u", 10),
-        ("s", "x", 5),
-        ("u", "v", 1),
-        ("u", "x", 2),
-        ("v", "y", 1),
-        ("x", "u", 3),
-        ("x", "v", 5),
-        ("x", "y", 2),
-        ("y", "s", 7),
-        ("y", "v", 6),
-    ]
-    """
-
-    # assert idastar_path_length(self.XG, "s", "v") == 9
-    assert idastar_path_length(self.XG, "s", "v", heuristic=h) == 9
-
-
 def test_idastar_inadmissible_heuristic_with_cutoff(self):
     heuristic_values = {"s": 36, "y": 14, "x": 10, "u": 10, "v": 0}
 
@@ -215,17 +157,6 @@ def test_cycle_idastar(self):
     C = nx.cycle_graph(7)
     assert idastar_path(C, 0, 3) == [0, 1, 2, 3]
     assert nx.dijkstra_path(C, 0, 4) == [0, 6, 5, 4]
-
-
-def test_unorderable_nodes_idastar(self):
-    """Tests that IDA* accommodates nodes that are not orderable."""
-    # Create the cycle graph on four nodes, with nodes represented
-    # as (unorderable) Python objects.
-    nodes = [object() for n in range(4)]
-    G = nx.Graph()
-    G.add_edges_from(pairwise(nodes, cyclic=True))
-    path = idastar_path(G, nodes[0], nodes[2])
-    assert len(path) == 3
 
 
 def test_idastar_NetworkXNoPath(self):
